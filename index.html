@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10151d">
+  <title>Reiniciador A/A · Telemetría</title>
+  <meta name="description" content="Panel de telemetría del reiniciador automático de aire acondicionado.">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">MONITOREO REMOTO</div>
+      <h1>Reiniciador A/A</h1>
+      <p id="deviceSubtitle" class="subtitle">Cargando equipo…</p>
+    </div>
+    <div class="top-actions">
+      <div id="connectionPill" class="pill pill-neutral">
+        <span class="dot"></span>
+        <span id="connectionText">Conectando…</span>
+      </div>
+      <button id="refreshBtn" class="button button-secondary" type="button">Actualizar</button>
+      <button id="settingsBtn" class="button" type="button">Configuración</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="errorBanner" class="banner banner-error hidden" aria-live="polite"></section>
+
+    <section class="hero-grid">
+      <article class="card status-card">
+        <div class="card-title">Estado del sistema</div>
+        <div class="status-main">
+          <span id="systemStatusDot" class="status-dot status-neutral"></span>
+          <div>
+            <div id="systemStatus" class="metric-large">—</div>
+            <div id="restartStateText" class="muted">Estado de reinicio: —</div>
+          </div>
+        </div>
+        <div class="mini-grid">
+          <div>
+            <span class="label">Último dato</span>
+            <strong id="lastSeen">—</strong>
+          </div>
+          <div>
+            <span class="label">Uptime</span>
+            <strong id="uptime">—</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-title">Alimentación</div>
+        <div id="linePresent" class="metric-large">—</div>
+        <div class="muted">Red de 220 V detectada por contacto seco</div>
+      </article>
+
+      <article class="card">
+        <div class="card-title">Temperatura sala</div>
+        <div class="metric-row">
+          <div id="roomTemp" class="metric-large">—</div>
+          <div class="unit">°C</div>
+        </div>
+        <div class="muted">DS18B20</div>
+      </article>
+
+      <article class="card">
+        <div class="card-title">York · corriente</div>
+        <div class="metric-row">
+          <div id="yorkCurrent" class="metric-large">—</div>
+          <div class="unit">A</div>
+        </div>
+        <div id="yorkState" class="muted">—</div>
+      </article>
+    </section>
+
+    <section class="detail-grid">
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <div class="card-title">Temperatura · últimas 24 h</div>
+            <div class="muted">Evolución de la sala</div>
+          </div>
+          <div id="tempRange" class="range-text">—</div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="tempChart" aria-label="Gráfico de temperatura"></canvas>
+          <div id="tempEmpty" class="chart-empty hidden">Todavía no hay historial suficiente.</div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <div class="card-title">Corriente York · últimas 24 h</div>
+            <div class="muted">Consumo medido por SCT013</div>
+          </div>
+          <div id="currentRange" class="range-text">—</div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="currentChart" aria-label="Gráfico de corriente"></canvas>
+          <div id="currentEmpty" class="chart-empty hidden">Todavía no hay historial suficiente.</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="detail-grid">
+      <article class="card">
+        <div class="card-title">Conectividad y lógica</div>
+        <dl class="kv-list">
+          <div><dt>Wi-Fi</dt><dd id="wifiConnected">—</dd></div>
+          <div><dt>SSID</dt><dd id="wifiSsid">—</dd></div>
+          <div><dt>Señal</dt><dd id="wifiRssi">—</dd></div>
+          <div><dt>Reinicio automático</dt><dd id="autoRestart">—</dd></div>
+          <div><dt>AP de configuración</dt><dd id="configAp">—</dd></div>
+        </dl>
+      </article>
+
+      <article class="card">
+        <div class="card-title">Cola local del ESP32</div>
+        <dl class="kv-list">
+          <div><dt>Eventos pendientes</dt><dd id="queueEvents">—</dd></div>
+          <div><dt>Bytes pendientes</dt><dd id="queueBytes">—</dd></div>
+          <div><dt>Falla de corriente</dt><dd id="currentFault">—</dd></div>
+        </dl>
+        <div class="muted block-note">
+          Si Internet cae, el ESP32 conserva telemetría/eventos en LittleFS y los reintenta luego.
+        </div>
+      </article>
+    </section>
+
+    <section class="card events-card">
+      <div class="section-head">
+        <div>
+          <div class="card-title">Eventos recientes</div>
+          <div class="muted">Cortes, restauraciones, reinicios, fallas y acciones del equipo</div>
+        </div>
+        <span id="eventCount" class="pill pill-neutral">0 eventos</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Evento</th>
+              <th>Red 220 V</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="eventsBody">
+            <tr><td colspan="4" class="table-empty">Cargando eventos…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      <span id="footerStatus">Esperando datos del backend…</span>
+      <span>·</span>
+      <span>GitHub Pages → Render → ESP32</span>
+    </footer>
+  </main>
+
+  <dialog id="settingsDialog">
+    <form id="settingsForm" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow">CONEXIÓN</div>
+          <h2>Configuración del panel</h2>
+        </div>
+        <button id="closeSettingsBtn" class="icon-button" value="cancel" aria-label="Cerrar" type="submit">×</button>
+      </div>
+
+      <label>
+        URL del backend en Render
+        <input id="apiUrlInput" type="url" placeholder="https://tu-servicio.onrender.com" autocomplete="url">
+      </label>
+
+      <label>
+        ID del equipo
+        <input id="deviceIdInput" type="text" placeholder="reiniciador_sala_aa" autocomplete="off">
+      </label>
+
+      <label>
+        Token de lectura del dashboard <span class="optional">(opcional)</span>
+        <input id="dashboardTokenInput" type="password" placeholder="No uses aquí el token de escritura del ESP32" autocomplete="off">
+      </label>
+
+      <p class="security-note">
+        El token de lectura se guarda sólo en este navegador mediante localStorage. No queda escrito en el repositorio de GitHub.
+      </p>
+
+      <div class="dialog-actions">
+        <button id="clearSettingsBtn" class="button button-secondary" type="button">Restaurar</button>
+        <button class="button" value="default" type="submit">Guardar y conectar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="./config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
