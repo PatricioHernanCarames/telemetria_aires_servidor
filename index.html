@@ -223,6 +223,7 @@
       </div>
     </div>
 
+    
 
     <div class="card">
       <div class="card-title">
@@ -358,6 +359,25 @@
 
   </div>
 
+    <!-- =========================
+       GRAFICO AMPERAJE YORK
+       ========================= -->
+
+  <div class="chart-card">
+
+  <h2>
+    Corriente York últimas 24 horas
+  </h2>
+
+  <canvas
+    id="currentChart"
+    width="1000"
+    height="300"
+  ></canvas>
+
+</div>
+
+
 
   <!-- =========================
        EVENTOS
@@ -402,6 +422,7 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 
@@ -1035,6 +1056,305 @@ function drawTemperatureChart(
   );
 }
 
+/* =========================================================
+   GRAFICO AMPERAJE YORK
+   ========================================================= */
+
+function drawCurrentChart(
+  history
+) {
+
+  const canvas =
+    document.getElementById(
+      "currentChart"
+    );
+
+  const ctx =
+    canvas.getContext(
+      "2d"
+    );
+
+
+  const width =
+    canvas.width;
+
+  const height =
+    canvas.height;
+
+
+  ctx.clearRect(
+    0,
+    0,
+    width,
+    height
+  );
+
+
+  if (
+    !history ||
+    history.length < 2
+  ) {
+
+    ctx.fillStyle =
+      "#aaa";
+
+    ctx.font =
+      "16px Arial";
+
+    ctx.fillText(
+      "Todavía no hay suficientes datos.",
+      20,
+      40
+    );
+
+    return;
+  }
+
+
+  const points =
+    history
+      .filter(
+        item =>
+          Number.isFinite(
+            Number(
+              item.york_current_a
+            )
+          )
+      );
+
+
+  if (
+    points.length < 2
+  ) {
+    return;
+  }
+
+
+  const currents =
+    points.map(
+      item =>
+        Number(
+          item.york_current_a
+        )
+    );
+
+
+  let minCurrent =
+    Math.min(
+      ...currents
+    );
+
+  let maxCurrent =
+    Math.max(
+      ...currents
+    );
+
+
+  if (
+    minCurrent === maxCurrent
+  ) {
+    minCurrent = 0;
+    maxCurrent += 1;
+  }
+
+
+  if (
+    minCurrent > 0
+  ) {
+    minCurrent = 0;
+  }
+
+
+  const padding = 45;
+
+
+  /* Grid */
+
+  ctx.strokeStyle =
+    "#333";
+
+  ctx.lineWidth = 1;
+
+
+  for (
+    let i = 0;
+    i <= 5;
+    i++
+  ) {
+
+    const y =
+      padding +
+      (
+        (
+          height -
+          padding * 2
+        ) *
+        i /
+        5
+      );
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      padding,
+      y
+    );
+
+    ctx.lineTo(
+      width - padding,
+      y
+    );
+
+    ctx.stroke();
+  }
+
+
+  /* Línea */
+
+  ctx.strokeStyle =
+    "#6ee787";
+
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+
+
+  points.forEach(
+    (item, index) => {
+
+      const current =
+        Number(
+          item.york_current_a
+        );
+
+
+      const x =
+        padding +
+        (
+          index /
+          (
+            points.length - 1
+          )
+        ) *
+        (
+          width -
+          padding * 2
+        );
+
+
+      const y =
+        height -
+        padding -
+        (
+          (
+            current -
+            minCurrent
+          ) /
+          (
+            maxCurrent -
+            minCurrent
+          )
+        ) *
+        (
+          height -
+          padding * 2
+        );
+
+
+      if (
+        index === 0
+      ) {
+
+        ctx.moveTo(
+          x,
+          y
+        );
+
+      } else {
+
+        ctx.lineTo(
+          x,
+          y
+        );
+      }
+    }
+  );
+
+
+  ctx.stroke();
+
+
+  /* Etiquetas */
+
+  ctx.fillStyle =
+    "#aaa";
+
+  ctx.font =
+    "12px Arial";
+
+
+  ctx.fillText(
+    maxCurrent.toFixed(2) +
+    " A",
+    5,
+    padding + 5
+  );
+
+
+  ctx.fillText(
+    minCurrent.toFixed(2) +
+    " A",
+    5,
+    height -
+    padding + 5
+  );
+
+
+  const first =
+    points[0];
+
+
+  const last =
+    points[
+      points.length - 1
+    ];
+
+
+  ctx.fillText(
+    formatDate(
+      first.created_at_local ||
+      first.received_at ||
+      first.created_at
+    ),
+    padding,
+    height - 10
+  );
+
+
+  const lastText =
+    formatDate(
+      last.created_at_local ||
+      last.received_at ||
+      last.created_at
+    );
+
+
+  const textWidth =
+    ctx.measureText(
+      lastText
+    ).width;
+
+
+  ctx.fillText(
+    lastText,
+    width -
+    padding -
+    textWidth,
+    height - 10
+  );
+}
+  
 
 /* =========================================================
    CARGA DE DATOS
@@ -1108,6 +1428,10 @@ async function loadDashboard() {
 
 
     drawTemperatureChart(
+      data.history
+    );
+
+    drawCurrentChart(
       data.history
     );
 
